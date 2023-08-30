@@ -1,6 +1,12 @@
 @tool
 extends Node2D
+# =========================================================
+# 2D図形描画.
+# =========================================================
 
+# ---------------------------------------------------------
+# const.
+# ---------------------------------------------------------
 ## 図形の種類.
 enum eType {
 	CIRCLE, # 正円.
@@ -15,6 +21,9 @@ const TBL_CIRCLE = [eType.CIRCLE, eType.ELLIPSE, eType.FILL_ARC]
 ## 矩形.
 const TBL_RECT = [eType.RECT, eType.ROUND_RECT]
 
+# ---------------------------------------------------------
+# export.
+# ---------------------------------------------------------
 ## 図形の種類.
 @export var type = eType.CIRCLE
 ## 色.
@@ -24,8 +33,11 @@ const TBL_RECT = [eType.RECT, eType.ROUND_RECT]
 
 ## アウトライン
 @export_group("Outline")
+## アウトラインを有効にするかどうか.
 @export var enabled_outline = false
+## アウトラインの線の太さ.
 @export_range(0.0, 64.0) var outline_width = 3.0
+## アウトラインの色.
 @export var outline_color = Color.DODGER_BLUE
 
 ## ------------ circle
@@ -51,16 +63,25 @@ const TBL_RECT = [eType.RECT, eType.ROUND_RECT]
 @export_range(0.0, 1.0) var round_xratio:float = 0.1
 @export_range(0.0, 1.0) var round_yratio:float = 0.2
 
+# ---------------------------------------------------------
+# public function.
+# ---------------------------------------------------------
 ## 更新 (再描画の要求をする)
 func update() -> void:
 	queue_redraw()
 
+# ---------------------------------------------------------
+# private function.
+# ---------------------------------------------------------
 func _process(_delta: float) -> void:
 	update()
 	
 func _draw() -> void:
 	call("_draw_" + eType.keys()[type])
 
+# ---------------------------------------------------------
+# private draw function.
+# ---------------------------------------------------------
 ## 基準の座標を取得する.
 func _get_base_pos() -> Vector2:
 	if type in TBL_CIRCLE:
@@ -181,8 +202,6 @@ func _draw_ROUND_RECT() -> void:
 	# 90度ずつ描画.
 	var rad = 0.0
 	var d_rad = (2 * PI / 4) / (divide-1)
-	var prev_v = Vector2.INF
-	var start_v = Vector2()
 	for pos2 in [a, b, c, d]:
 		var points = PackedVector2Array()
 		var colors = PackedColorArray()
@@ -195,20 +214,6 @@ func _draw_ROUND_RECT() -> void:
 			points.append(v)
 			colors.append(color)
 			points2.append(v)
-			# アウトライン用処理.
-			if enabled_outline:
-				if i == 0:
-					if prev_v == Vector2.INF:
-						start_v = v
-					else:
-						draw_line(prev_v, v, outline_color, outline_width)
-				if i == (divide - 1) and pos2 == d:
-					draw_line(start_v, v, outline_color, outline_width)
-				if i == (divide - 1):
-					prev_v = v
-					# アウトラインの描画.
-					draw_polyline(points2, outline_color, outline_width)
-					points2.clear()
 			
 			rad += d_rad
 		draw_polygon(points, colors)
@@ -221,12 +226,21 @@ func _draw_ROUND_RECT() -> void:
 	draw_rect(rect3a, color)
 	
 	# 3bの部分を描画.
+	# 左側.
 	var pos3b1 = Vector2(pos1.x, base.y)
 	var size3b1 = Vector2(size1.x, size2.y)
 	var rect3b1 = Rect2(pos3b1, size3b1)
 	draw_rect(rect3b1, color)
 	
+	# 右側.
 	var pos3b2 = Vector2(pos1.x, pos1.y+size1.y)
 	var size3b2 = Vector2(size1.x, size2.y)
 	var rect3b2 = Rect2(pos3b2, size3b2)
 	draw_rect(rect3b2, color)
+
+	if enabled_outline:
+		# 最初の点をつなぐ.
+		var v = points2[0]
+		points2.append(v)
+		# アウトラインの描画.
+		draw_polyline(points2, outline_color, outline_width)
