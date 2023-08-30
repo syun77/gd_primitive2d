@@ -21,6 +21,13 @@ const TBL_RECT = [eType.RECT, eType.ROUND_RECT]
 @export var color = Color.WHITE
 ## 中央揃え.
 @export var centered = true
+
+## アウトライン
+@export_group("Outline")
+@export var enabled_outline = false
+@export_range(0.0, 64.0) var outline_width = 3.0
+@export var outline_color = Color.DODGER_BLUE
+
 ## ------------ circle
 @export_category("Circle/Ellipse")
 ## 半径.
@@ -73,11 +80,19 @@ func _get_base_pos() -> Vector2:
 func _draw_CIRCLE() -> void:
 	var base = _get_base_pos()
 	draw_circle(base, radius, color)
+	
+	if enabled_outline:
+		# アウトラインの描画.
+		draw_arc(base, radius, 0.0, 2*PI, divide, outline_color, outline_width)
 
 ## 楕円の描画.
 func _draw_ELLIPSE() -> void:
+	# 塗りつぶし用.
 	var points = PackedVector2Array()
 	var colors = PackedColorArray()
+	# アウトライン用.
+	var points2 = PackedVector2Array()
+	
 	var base = _get_base_pos()
 	points.append(base)
 	colors.append(color)
@@ -89,13 +104,22 @@ func _draw_ELLIPSE() -> void:
 		v.y += (radius * radius_yratio) * sin(rad)
 		points.append(v)
 		colors.append(color)
+		points2.append(v)
 		rad += d
 	draw_polygon(points, colors)
+	
+	if enabled_outline:
+		# アウトラインの描画.
+		draw_polyline(points2, outline_color, outline_width)
 
 ## 塗りつぶし円弧の描画.
 func _draw_FILL_ARC() -> void:
+	# 塗りつぶし用.
 	var points = PackedVector2Array()
 	var colors = PackedColorArray()
+	# アウトライン用.
+	var points2 = PackedVector2Array()
+	
 	var base = _get_base_pos()
 	points.append(base)
 	colors.append(color)
@@ -107,14 +131,23 @@ func _draw_FILL_ARC() -> void:
 		v.y += radius * sin(rad)
 		points.append(v)
 		colors.append(color)
+		points2.append(v)
 		rad += d
 	draw_polygon(points, colors)
+	
+	if enabled_outline:
+		# アウトラインの描画.
+		draw_polyline(points2, outline_color, outline_width)
 
 ## 矩形の描画.
 func _draw_RECT() -> void:
 	var pos = _get_base_pos()
 	var rect = Rect2(pos, size)
 	draw_rect(rect, color)
+	
+	if enabled_outline:
+		# アウトラインの描画.
+		draw_rect(rect, outline_color, false, outline_width)
 
 ## 角丸矩形の描画.
 func _draw_ROUND_RECT() -> void:
@@ -124,6 +157,9 @@ func _draw_ROUND_RECT() -> void:
 	var base = _get_base_pos()
 	var xrate = round_xratio/2
 	var yrate = round_yratio/2
+	
+	# アウトライン用.
+	var points2 = PackedVector2Array()
 	
 	# 1の部分を描画.
 	var pos1 = base + Vector2(size.x * xrate, size.y * yrate)
@@ -145,6 +181,8 @@ func _draw_ROUND_RECT() -> void:
 	# 90度ずつ描画.
 	var rad = 0.0
 	var d_rad = (2 * PI / 4) / (divide-1)
+	var prev_v = Vector2.INF
+	var start_v = Vector2()
 	for pos2 in [a, b, c, d]:
 		var points = PackedVector2Array()
 		var colors = PackedColorArray()
@@ -156,6 +194,22 @@ func _draw_ROUND_RECT() -> void:
 			v.y += size2.y * sin(rad)
 			points.append(v)
 			colors.append(color)
+			points2.append(v)
+			# アウトライン用処理.
+			if enabled_outline:
+				if i == 0:
+					if prev_v == Vector2.INF:
+						start_v = v
+					else:
+						draw_line(prev_v, v, outline_color, outline_width)
+				if i == (divide - 1) and pos2 == d:
+					draw_line(start_v, v, outline_color, outline_width)
+				if i == (divide - 1):
+					prev_v = v
+					# アウトラインの描画.
+					draw_polyline(points2, outline_color, outline_width)
+					points2.clear()
+			
 			rad += d_rad
 		draw_polygon(points, colors)
 		rad -= d_rad
